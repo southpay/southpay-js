@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- The checkout iframe drops its min-height after the first resize, so it fits the checkout's actual content instead of holding the default floor.
+
 ## 0.2.0
 
 Breaking: `init()` is gone. Create a client with `SouthPay(publishableKey, options)` and use `southpay.paymentIntents.create()` and `southpay.checkout.mount()`. The hosted script still exposes a `window.SouthPay` callable.

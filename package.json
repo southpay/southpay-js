@@ -1,6 +1,6 @@
 {
   "name": "@southpay/js",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Browser SDK for SouthPay crypto checkouts",
   "type": "module",
   "license": "MIT",

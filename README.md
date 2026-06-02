@@ -18,8 +18,8 @@ Or load the hosted script, which exposes the same factory as a callable `window.
 
 ```html
 <script
-  src="https://integrate.southpay.io/widgets/southpay-js-0.2.0.js"
-  integrity="sha384-/gpMRJRuwDNmy17O4aD8RC7409FwC3P6Duo+N5VK8385lzy2aQPzHghU5RyrJ2fF"
+  src="https://integrate.southpay.io/widgets/southpay-js-0.2.1.js"
+  integrity="sha384-tFsgLnfHpprV3DORy6MfdmJvCGDM56DqXDOiA5qt/GEUK4q0cqe5k8tgX2/rcbDI"
   crossorigin="anonymous"
 ></script>
 ```

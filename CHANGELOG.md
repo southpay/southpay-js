@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Send the SDK version as an `x-client-version` header on payment intent create, alongside the existing `x-southpay-client` header, so backend version telemetry is captured.
+
 ## 0.2.1
 
 - The checkout iframe drops its min-height after the first resize, so it fits the checkout's actual content instead of holding the default floor.

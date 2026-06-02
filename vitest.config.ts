@@ -5,6 +5,7 @@ export default defineConfig({
     __SDK_VERSION__: JSON.stringify("0.0.0-test"),
   },
   test: {
+    include: ["test/**/*.test.ts"],
     environment: "happy-dom",
     environmentOptions: {
       happyDOM: {

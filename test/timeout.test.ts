@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCheckout } from "../src/checkout";
-import { configure, reset } from "../src/config";
+import { SouthPay } from "../src/client";
+import type { SouthpayClient } from "../src/types";
 
 describe("createCheckout timeout", () => {
+  let southpay: SouthpayClient;
+
   beforeEach(() => {
-    reset();
-    configure({ publishableKey: "sp_pk_test_abc" });
+    southpay = SouthPay("sp_pk_test_abc");
     document.body.innerHTML = "";
   });
 
@@ -14,7 +15,7 @@ describe("createCheckout timeout", () => {
     vi.unstubAllGlobals();
   });
 
-  it("aborts and reports a network error after the timeout", async () => {
+  it("aborts and reports a timeout error after the timeout", async () => {
     vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
@@ -28,13 +29,12 @@ describe("createCheckout timeout", () => {
       ),
     );
 
-    const promise = createCheckout({
-      amount: 100,
+    const promise = southpay.paymentIntents.create({
+      amount: "1.00",
       currency: "EUR",
-      container: document.body,
       timeoutMs: 1000,
     });
-    const assertion = expect(promise).rejects.toMatchObject({ code: "network_error" });
+    const assertion = expect(promise).rejects.toMatchObject({ code: "timeout" });
 
     await vi.advanceTimersByTimeAsync(1001);
     await assertion;

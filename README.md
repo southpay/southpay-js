@@ -8,45 +8,69 @@ Browser SDK for SouthPay crypto checkouts. No dependencies. Ships as ESM, Common
 npm install @southpay/js
 ```
 
-Or load the hosted script:
+Or load the hosted script, which exposes the same factory as a callable `window.SouthPay`:
 
 ```html
 <script src="https://integrate.southpay.io/widgets/v2.js"></script>
 ```
 
-The npm package exposes named exports; the hosted script exposes the same functions on `window.SouthPay`.
+`v2.js` tracks the latest 2.x release. For production, pin an exact version with Subresource Integrity:
+
+```html
+<script
+  src="https://integrate.southpay.io/widgets/southpay-js-0.2.0.js"
+  integrity="sha384-/gpMRJRuwDNmy17O4aD8RC7409FwC3P6Duo+N5VK8385lzy2aQPzHghU5RyrJ2fF"
+  crossorigin="anonymous"
+></script>
+```
+
+The npm package exposes the same named exports.
 
 ## Usage
 
 You need a publishable key (`sp_pk_live_...` or `sp_pk_test_...`) from the dashboard. The SDK refuses any other key. Secret keys must never reach the browser.
 
-### Browser-created checkout
+Create a client once with your key, then reuse it. There is no global state, so a test client and a live client can coexist on the same page.
 
 ```ts
-import { init, createCheckout } from "@southpay/js";
+import { SouthPay } from "@southpay/js";
 
-init({ publishableKey: "sp_pk_live_..." });
+const southpay = SouthPay("sp_pk_live_...");
+```
 
-await createCheckout({
-  amount: 1000,
-  currency: "EUR",
+With the hosted script, `SouthPay` is the same callable on `window`:
+
+```html
+<script src="https://integrate.southpay.io/widgets/v2.js"></script>
+<script>
+  const southpay = SouthPay("sp_pk_live_...");
+</script>
+```
+
+### Browser-created checkout
+
+Create a payment intent, then mount its checkout:
+
+```ts
+const intent = await southpay.paymentIntents.create({ amount: "10.00", currency: "EUR" });
+
+southpay.checkout.mount({
+  reference: intent.reference,
   container: "#checkout",
   onCompleted: ({ reference }) => console.log("paid", reference),
 });
 ```
 
-`amount` is in the minor unit of the currency (`1000` is 10.00 EUR). Omit `container` to open a modal overlay.
+`amount` is a decimal string in the currency's major units (`"10.00"` is 10.00 EUR; `"1000"` is 1000 JPY). It is validated against the currency's decimal places. Omit `container` to open a modal overlay.
 
 Because the amount is set in the browser, use this flow for donations or pay-what-you-want. For fixed-price goods, create the payment intent on your server so the buyer cannot change the amount, then mount it.
 
 ### Server-created checkout
 
-Create the intent on your server with a secret key, send the `reference` to the page, then mount it. `mount` needs no key.
+Create the intent on your server with a secret key, send the `reference` to the page, then mount it (no `paymentIntents.create` needed):
 
 ```ts
-import { mount } from "@southpay/js";
-
-mount({
+southpay.checkout.mount({
   reference: "REFERENCE_FROM_YOUR_SERVER",
   container: "#checkout",
   onCompleted: ({ successUrl }) => {
@@ -57,19 +81,22 @@ mount({
 
 ## API
 
-### `init(config)`
+### `SouthPay(publishableKey, options?): SouthpayClient`
 
-- `config.publishableKey` (required)
-- `config.apiBase` (optional, defaults to `https://api.southpay.io`)
-- `config.checkoutOrigin` (optional, defaults to the script origin or `https://pay.southpay.io`)
+- `publishableKey` (required): `sp_pk_live_...` or `sp_pk_test_...`.
+- `options.apiBase` (optional, defaults to `https://api.southpay.io`)
+- `options.checkoutOrigin` (optional, defaults to `https://pay.southpay.io`)
+- `options.nonce` (optional): a CSP nonce. See [Content Security Policy](#content-security-policy).
 
-### `createCheckout(options): Promise<CheckoutHandle>`
+Both URLs are validated; a non-http(s) value throws `invalid_config`.
 
-`amount`, `currency`, optional `orderId`, `title`, `description`, `imageUrl`, `successUrl`, `failedUrl`, `metadata`, `container`, `minHeight`, and the callbacks below.
+### `client.paymentIntents.create(params): Promise<PaymentIntent>`
+
+`amount` (decimal string, major units), `currency`, optional `orderId`, `title`, `description`, `imageUrl`, `successUrl`, `failedUrl`, `metadata`. Returns `{ reference }`.
 
 The create request is idempotent. A key is generated per call, or pass your own `idempotencyKey` to make retries safe. It times out after 20s (`timeoutMs`) and accepts an `AbortSignal` via `signal`.
 
-### `mount(options): CheckoutHandle`
+### `client.checkout.mount(options): CheckoutHandle`
 
 `reference`, optional `container`, `minHeight`, and the callbacks below.
 
@@ -81,14 +108,15 @@ The create request is idempotent. A key is generated per call, or pass your own 
 ### Callbacks
 
 - `onReady()`
-- `onStatusChange({ reference, status })`
-- `onCompleted({ reference, successUrl })`
+- `onStatusChange({ reference, status })` where `status` is a `CheckoutStatus`.
+- `onCompleted({ reference, successUrl })`. If omitted, the SDK navigates to `successUrl` when it is a safe http(s) URL.
 - `onFailed({ reference, status })`
 - `onExpired({ reference })`
+- `onError(error)` fired if the checkout widget fails to load.
 
 ### Errors
 
-`createCheckout`, `mount`, and `init` throw `SouthpayError` with a `code` (`not_initialized`, `invalid_publishable_key`, `invalid_amount`, `missing_currency`, `missing_reference`, `container_not_found`, `network_error`, `request_failed`, `invalid_response`).
+Methods throw `SouthpayError` with a `code`: `invalid_publishable_key`, `invalid_config`, `invalid_amount`, `missing_currency`, `missing_reference`, `container_not_found`, `network_error`, `timeout`, `request_failed`, `invalid_response`, `widget_load_failed`. Use `isSouthpayError(err)` to narrow safely across bundlers and realms.
 
 ### `VERSION`
 
@@ -99,9 +127,26 @@ The package version, also sent as `x-southpay-client` on the create request.
 - `examples/html` is a plain script-tag integration.
 - `examples/react` is a React app that consumes the package.
 
+## Content Security Policy
+
+The hosted checkout runs in an iframe, so allow it in your policy:
+
+```
+frame-src https://pay.southpay.io;
+connect-src https://api.southpay.io;
+```
+
+By default the SDK applies its styles inline, which needs `style-src 'unsafe-inline'`. To run under a strict `style-src` instead, pass the same nonce you put in your CSP header:
+
+```ts
+const southpay = SouthPay("sp_pk_live_...", { nonce: "<your-csp-nonce>" });
+```
+
+With a nonce, the SDK injects a single nonce'd stylesheet and emits no inline styles (`style-src 'self' 'nonce-<your-csp-nonce>'`).
+
 ## Security
 
-Only publishable keys reach the browser; the SDK rejects anything else. See [SECURITY.md](./SECURITY.md).
+Only publishable keys reach the browser; the SDK rejects anything else. Inbound `postMessage` events are checked by both origin and source window, payloads are validated, and redirects are restricted to http(s) URLs. See [SECURITY.md](./SECURITY.md).
 
 ## Development
 
@@ -111,6 +156,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run size
 ```
 
 ## License

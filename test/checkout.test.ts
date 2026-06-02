@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCheckout } from "../src/checkout";
-import { configure, reset } from "../src/config";
+import { SouthPay } from "../src/client";
 import { SouthpayError } from "../src/errors";
+import type { SouthpayClient } from "../src/types";
 
 function mockFetch(result: { ok?: boolean; status?: number; body?: unknown }) {
   const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => ({
@@ -13,18 +13,20 @@ function mockFetch(result: { ok?: boolean; status?: number; body?: unknown }) {
   return fetchMock;
 }
 
-describe("createCheckout", () => {
+describe("paymentIntents.create", () => {
+  let southpay: SouthpayClient;
+
   beforeEach(() => {
-    reset();
-    configure({ publishableKey: "sp_pk_test_abc", checkoutOrigin: "https://pay.southpay.io" });
+    southpay = SouthPay("sp_pk_test_abc", { checkoutOrigin: "https://pay.southpay.io" });
     document.body.innerHTML = "";
   });
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("posts the amount in major units with the publishable key", async () => {
+  it("posts the canonicalized amount with the publishable key", async () => {
     const fetchMock = mockFetch({ body: { reference: "ref_1" } });
-    await createCheckout({ amount: 1050, currency: "EUR", container: document.body });
+    const intent = await southpay.paymentIntents.create({ amount: "10.5", currency: "EUR" });
+    expect(intent).toEqual({ reference: "ref_1" });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const call = fetchMock.mock.calls[0];
@@ -40,7 +42,7 @@ describe("createCheckout", () => {
 
   it("sends an idempotency key and client header", async () => {
     const fetchMock = mockFetch({ body: { reference: "ref_1" } });
-    await createCheckout({ amount: 100, currency: "EUR", container: document.body });
+    await southpay.paymentIntents.create({ amount: "1.00", currency: "EUR" });
 
     const headers = (fetchMock.mock.calls[0]?.[1]?.headers ?? {}) as Record<string, string>;
     expect(headers["idempotency-key"]).toBeTruthy();
@@ -49,10 +51,9 @@ describe("createCheckout", () => {
 
   it("uses a caller-provided idempotency key", async () => {
     const fetchMock = mockFetch({ body: { reference: "ref_1" } });
-    await createCheckout({
-      amount: 100,
+    await southpay.paymentIntents.create({
+      amount: "1.00",
       currency: "EUR",
-      container: document.body,
       idempotencyKey: "fixed-key",
     });
 
@@ -60,30 +61,34 @@ describe("createCheckout", () => {
     expect(headers["idempotency-key"]).toBe("fixed-key");
   });
 
-  it("rejects a non-integer amount", async () => {
+  it("rejects an amount with too many decimal places for the currency", async () => {
     mockFetch({ body: { reference: "ref_1" } });
     await expect(
-      createCheckout({ amount: 10.5, currency: "EUR", container: document.body }),
+      southpay.paymentIntents.create({ amount: "10.999", currency: "EUR" }),
     ).rejects.toMatchObject({ code: "invalid_amount" });
   });
 
   it("throws when the response has no reference", async () => {
     mockFetch({ body: {} });
     await expect(
-      createCheckout({ amount: 100, currency: "EUR", container: document.body }),
+      southpay.paymentIntents.create({ amount: "1.00", currency: "EUR" }),
     ).rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("surfaces the server error message", async () => {
     mockFetch({ ok: false, status: 422, body: { error: { message: "amount is required" } } });
     await expect(
-      createCheckout({ amount: 100, currency: "EUR", container: document.body }),
+      southpay.paymentIntents.create({ amount: "1.00", currency: "EUR" }),
     ).rejects.toMatchObject({ code: "request_failed", message: "amount is required" });
   });
 
-  it("mounts an iframe into the container", async () => {
+  it("creates an intent then mounts its reference", async () => {
     mockFetch({ body: { reference: "ref_1" } });
-    const handle = await createCheckout({ amount: 100, currency: "EUR", container: document.body });
+    const intent = await southpay.paymentIntents.create({ amount: "1.00", currency: "EUR" });
+    const handle = southpay.checkout.mount({
+      reference: intent.reference,
+      container: document.body,
+    });
 
     const iframe = document.body.querySelector("iframe");
     expect(iframe).not.toBeNull();
@@ -94,11 +99,7 @@ describe("createCheckout", () => {
     expect(document.body.querySelector("iframe")).toBeNull();
   });
 
-  it("throws before init", async () => {
-    reset();
-    mockFetch({ body: { reference: "ref_1" } });
-    await expect(
-      createCheckout({ amount: 100, currency: "EUR", container: document.body }),
-    ).rejects.toBeInstanceOf(SouthpayError);
+  it("rejects a secret key at construction", () => {
+    expect(() => SouthPay("sp_sk_live_abc")).toThrow(SouthpayError);
   });
 });

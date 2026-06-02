@@ -1,19 +1,28 @@
-import { init } from "@southpay/js";
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import { SouthPay, type SouthpayClient } from "@southpay/js";
+import { type CSSProperties, type ReactNode, useMemo, useState } from "react";
 import { SouthpayCheckout } from "./SouthpayCheckout";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_SOUTHPAY_PUBLISHABLE_KEY;
+const API_BASE = import.meta.env.VITE_SOUTHPAY_API_BASE;
+const CHECKOUT_ORIGIN = import.meta.env.VITE_SOUTHPAY_CHECKOUT_ORIGIN;
 
 export function App() {
-  const [ready, setReady] = useState(false);
   const [showInline, setShowInline] = useState(false);
   const [reference, setReference] = useState("");
   const [mountedReference, setMountedReference] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!PUBLISHABLE_KEY) return;
-    init({ publishableKey: PUBLISHABLE_KEY });
-    setReady(true);
+  const client = useMemo<{ southpay?: SouthpayClient; error?: string }>(() => {
+    if (!PUBLISHABLE_KEY) return {};
+    try {
+      return {
+        southpay: SouthPay(PUBLISHABLE_KEY, {
+          apiBase: API_BASE || undefined,
+          checkoutOrigin: CHECKOUT_ORIGIN || undefined,
+        }),
+      };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Failed to initialize SouthPay" };
+    }
   }, []);
 
   if (!PUBLISHABLE_KEY) {
@@ -27,7 +36,15 @@ export function App() {
     );
   }
 
-  if (!ready) return <Shell>{null}</Shell>;
+  if (client.error || !client.southpay) {
+    return (
+      <Shell>
+        <p style={{ color: "#b91c1c" }}>{client.error ?? "SouthPay is unavailable"}</p>
+      </Shell>
+    );
+  }
+
+  const southpay = client.southpay;
 
   return (
     <Shell>
@@ -35,7 +52,8 @@ export function App() {
         <h2 style={h2}>Inline checkout</h2>
         {showInline ? (
           <SouthpayCheckout
-            amount={1000}
+            southpay={southpay}
+            amount="10.00"
             currency="EUR"
             onCompleted={(event) => console.log("completed", event)}
             onExpired={() => setShowInline(false)}
@@ -69,6 +87,7 @@ export function App() {
           <div style={{ marginTop: 16 }}>
             <SouthpayCheckout
               key={mountedReference}
+              southpay={southpay}
               reference={mountedReference}
               onCompleted={(event) => {
                 if (event.successUrl) window.location.assign(event.successUrl);

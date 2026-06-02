@@ -27,4 +27,6 @@ npm run size        # bundle size budget
 
 ## Releasing
 
-Bump the version in `package.json`, update `CHANGELOG.md`, then publish a GitHub release. The release workflow builds and publishes to npm with provenance.
+Bump the version in `package.json`, update `CHANGELOG.md`, and publish a GitHub release. CI then publishes to npm with provenance and deploys the hosted script (`npm run cdn:deploy`) to `integrate.southpay.io`. Required repo secrets: `NPM_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+
+For the first publish, run `npm run preflight`, then `npm publish`. The CDN can be deployed manually with `npm run cdn:deploy`. When bumping the version, update the pinned `southpay-js-<version>.js` URL and its SRI in `README.md` (the hash is printed by `npm run cdn:stage`).

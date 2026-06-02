@@ -11,6 +11,11 @@
         margin: 48px auto;
         padding: 0 16px;
       }
+      label {
+        display: block;
+        margin-top: 12px;
+        font-size: 14px;
+      }
       input {
         width: 100%;
         padding: 8px 12px;
@@ -34,13 +39,16 @@
   </head>
   <body>
     <h1>@southpay/js</h1>
-    <p>Run <code>npm run build</code> first, then open this file.</p>
+    <p>Run <code>npm run build</code>, then serve the repository root over http (for example <code>npx serve . -l 8080</code>) and open <code>/examples/html/index.html</code>. This page loads <code>../../dist/index.global.js</code>, so it must be served from the repo root, not opened as a <code>file://</code> page.</p>
 
     <label for="key">Publishable key</label>
     <input id="key" placeholder="sp_pk_test_..." />
 
     <label for="api">API base (optional)</label>
-    <input id="api" placeholder="https://api.southpay.io" />
+    <input id="api" placeholder="https://api.southpay.io" value="http://localhost:3000" />
+
+    <label for="origin">Checkout origin (optional)</label>
+    <input id="origin" placeholder="https://pay.southpay.io" value="http://localhost:5173" />
 
     <button id="inline">Inline checkout</button>
     <button id="modal">Modal checkout</button>
@@ -49,24 +57,34 @@
 
     <script src="../../dist/index.global.js"></script>
     <script>
+      function value(id) {
+        return document.getElementById(id).value.trim() || undefined;
+      }
+
       function start(container) {
-        var key = document.getElementById("key").value.trim();
+        var key = value("key");
         if (!key) {
           alert("Enter a publishable key");
           return;
         }
-        var api = document.getElementById("api").value.trim();
-        SouthPay.init({ publishableKey: key, apiBase: api || undefined });
-        SouthPay.createCheckout({
-          amount: 1000,
-          currency: "EUR",
-          container: container,
-          onCompleted: function (event) {
-            console.log("completed", event);
-          },
-        }).catch(function (error) {
-          console.error(error);
+        var southpay = SouthPay(key, {
+          apiBase: value("api"),
+          checkoutOrigin: value("origin"),
         });
+        southpay.paymentIntents
+          .create({ amount: "10.00", currency: "EUR" })
+          .then(function (intent) {
+            southpay.checkout.mount({
+              reference: intent.reference,
+              container: container,
+              onCompleted: function (event) {
+                console.log("completed", event);
+              },
+            });
+          })
+          .catch(function (error) {
+            console.error(error);
+          });
       }
 
       document.getElementById("inline").addEventListener("click", function () {

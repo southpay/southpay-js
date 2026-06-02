@@ -1,0 +1,16 @@
+{
+  "name": "southpay-integrate",
+  "compatibility_date": "2026-02-23",
+  "assets": {
+    "directory": "./cdn"
+  },
+  "routes": [
+    {
+      "pattern": "integrate.southpay.io",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": false
+  }
+}

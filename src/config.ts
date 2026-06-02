@@ -1,67 +1,51 @@
 import { SouthpayError } from "./errors";
-import type { SouthpayConfig } from "./types";
+import type { SouthpayClientOptions } from "./types";
 
 const DEFAULT_API_BASE = "https://api.southpay.io";
 const DEFAULT_CHECKOUT_ORIGIN = "https://pay.southpay.io";
-const PUBLISHABLE_KEY = /^sp_pk_(?:live|test)_/;
+const PUBLISHABLE_KEY = /^sp_pk_(?:live|test)_[A-Za-z0-9]+$/;
 
 export interface ResolvedConfig {
-  publishableKey: string;
-  apiBase: string;
-  checkoutOrigin: string;
+  readonly publishableKey: string;
+  readonly apiBase: string;
+  readonly checkoutOrigin: string;
+  readonly nonce?: string;
 }
 
-let resolved: ResolvedConfig | null = null;
-
-function stripTrailingSlash(value: string): string {
+function normalizeHttpUrl(value: string, field: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new SouthpayError("invalid_config", `${field} must be a valid URL: ${value}`);
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new SouthpayError("invalid_config", `${field} must use http(s): ${value}`);
+  }
   return value.replace(/\/+$/, "");
 }
 
-function detectScriptOrigin(): string {
-  if (typeof document === "undefined") return DEFAULT_CHECKOUT_ORIGIN;
-  const script = document.currentScript as HTMLScriptElement | null;
-  if (!script?.src) return DEFAULT_CHECKOUT_ORIGIN;
-  try {
-    return new URL(script.src).origin;
-  } catch {
-    return DEFAULT_CHECKOUT_ORIGIN;
+export function resolveConfig(
+  publishableKey: string,
+  options: SouthpayClientOptions = {},
+): ResolvedConfig {
+  if (!publishableKey) {
+    throw new SouthpayError("invalid_publishable_key", "SouthPay() requires a publishable key");
   }
-}
-
-const scriptOrigin = detectScriptOrigin();
-
-export function configure(options: SouthpayConfig): ResolvedConfig {
-  if (!options?.publishableKey) {
-    throw new SouthpayError("invalid_publishable_key", "init requires a publishableKey");
-  }
-  if (!PUBLISHABLE_KEY.test(options.publishableKey)) {
+  if (!PUBLISHABLE_KEY.test(publishableKey)) {
     throw new SouthpayError(
       "invalid_publishable_key",
-      "init requires a publishable key (sp_pk_...); never use a secret key in the browser",
+      "SouthPay() requires a publishable key (sp_pk_...); never use a secret key in the browser",
     );
   }
-  resolved = {
-    publishableKey: options.publishableKey,
-    apiBase: stripTrailingSlash(options.apiBase ?? DEFAULT_API_BASE),
-    checkoutOrigin: stripTrailingSlash(options.checkoutOrigin ?? scriptOrigin),
+
+  return {
+    publishableKey,
+    apiBase: normalizeHttpUrl(options.apiBase ?? DEFAULT_API_BASE, "apiBase"),
+    checkoutOrigin: normalizeHttpUrl(
+      options.checkoutOrigin ?? DEFAULT_CHECKOUT_ORIGIN,
+      "checkoutOrigin",
+    ),
+    nonce: options.nonce,
   };
-  return resolved;
-}
-
-export function requireConfig(): ResolvedConfig {
-  if (!resolved) {
-    throw new SouthpayError(
-      "not_initialized",
-      "call init({ publishableKey }) before creating a checkout",
-    );
-  }
-  return resolved;
-}
-
-export function checkoutOrigin(): string {
-  return resolved ? resolved.checkoutOrigin : scriptOrigin;
-}
-
-export function reset(): void {
-  resolved = null;
 }

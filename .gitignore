@@ -1,7 +1,10 @@
 node_modules
 dist
 coverage
-.claude
+playwright-report
+test-results
+cdn/widgets
+.wrangler
 *.log
 .DS_Store
 .env

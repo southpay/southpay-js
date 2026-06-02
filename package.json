@@ -1,6 +1,6 @@
 {
   "name": "@southpay/js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Browser SDK for SouthPay crypto checkouts",
   "type": "module",
   "license": "MIT",
@@ -22,37 +22,67 @@
   "jsdelivr": "./dist/index.global.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist"],
+  "files": ["dist", "CHANGELOG.md", "SECURITY.md"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test",
     "lint": "biome check .",
     "format": "biome format --write .",
     "size": "size-limit",
-    "prepublishOnly": "npm run build"
+    "check:exports": "publint --strict && attw --pack",
+    "cdn:stage": "npm run build && node scripts/stage-cdn.mjs",
+    "cdn:sri": "node scripts/sri.mjs",
+    "cdn:dev": "npm run cdn:stage && wrangler dev",
+    "cdn:deploy": "npm run cdn:stage && wrangler deploy",
+    "version": "npm run build && node scripts/sri.mjs --write && git add README.md",
+    "preflight": "npm run lint && npm run typecheck && npm test && npm run build && npm run cdn:sri && npm run check:exports && npm run size",
+    "publish:dry": "npm publish --dry-run",
+    "prepublishOnly": "npm run build && npm test"
   },
   "engines": {
     "node": ">=18"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
+  "size-limit": [
+    {
+      "name": "esm (gzip)",
+      "path": "dist/index.js",
+      "limit": "4 kB"
+    },
+    {
+      "name": "global script (gzip)",
+      "path": "dist/index.global.js",
+      "limit": "4 kB"
+    }
+  ],
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.3",
     "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.60.0",
     "@size-limit/file": "^11.1.6",
     "happy-dom": "^15.11.2",
+    "publint": "^0.3.21",
     "size-limit": "^11.1.6",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "wrangler": "^4.83.0"
   }
 }

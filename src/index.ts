@@ -1,21 +1,19 @@
-import { configure } from "./config";
-import type { SouthpayConfig } from "./types";
-
-export { createCheckout, mount } from "./checkout";
-export { SouthpayError, type SouthpayErrorCode } from "./errors";
+export { SouthPay } from "./client";
+export { SouthpayError, isSouthpayError, type SouthpayErrorCode } from "./errors";
 export { VERSION } from "./version";
 export type {
-  SouthpayConfig,
+  SouthpayClient,
+  SouthpayClientOptions,
+  PaymentIntentsResource,
+  CheckoutResource,
   CheckoutCallbacks,
+  CheckoutStatus,
   CheckoutEvent,
   CheckoutStatusEvent,
   CheckoutCompletedEvent,
-  CreateCheckoutOptions,
+  EmbedOptions,
+  CreatePaymentIntentParams,
+  PaymentIntent,
   MountOptions,
   CheckoutHandle,
 } from "./types";
-
-/** Initialize the SDK with a publishable key. Call once before createCheckout. */
-export function init(config: SouthpayConfig): void {
-  configure(config);
-}

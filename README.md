@@ -19,7 +19,7 @@ Or load the hosted script, which exposes the same factory as a callable `window.
 ```html
 <script
   src="https://integrate.southpay.io/widgets/southpay-js-0.2.1.js"
-  integrity="sha384-tFsgLnfHpprV3DORy6MfdmJvCGDM56DqXDOiA5qt/GEUK4q0cqe5k8tgX2/rcbDI"
+  integrity="sha384-FnGGqxBo9PhknsTChy/O1nU4D5LBtn1gD+SYvx6zBR/8yMkXtiDC2rb0rIgFAUDO"
   crossorigin="anonymous"
 ></script>
 ```

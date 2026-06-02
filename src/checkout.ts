@@ -1,4 +1,4 @@
-import { checkoutOrigin, requireConfig } from "./config";
+import { type ResolvedConfig, checkoutOrigin, requireConfig } from "./config";
 import { SouthpayError } from "./errors";
 import { createIframe, createModal, resolveContainer } from "./internal/iframe";
 import { type EmbedMessage, isEmbedMessage } from "./internal/messaging";
@@ -8,14 +8,22 @@ import type {
   CreateCheckoutOptions,
   MountOptions,
 } from "./types";
+import { VERSION } from "./version";
 
 const DEFAULT_MIN_HEIGHT = 560;
+const DEFAULT_TIMEOUT_MS = 20_000;
 
 function toMajorUnits(amount: number): string {
   if (!Number.isInteger(amount) || amount <= 0) {
     throw new SouthpayError("invalid_amount", "amount must be a positive integer in minor units");
   }
   return (amount / 100).toFixed(2);
+}
+
+function newIdempotencyKey(provided?: string): string {
+  if (provided) return provided;
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return uuid ?? `idem_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -29,33 +37,57 @@ async function readErrorMessage(response: Response): Promise<string> {
   return `request failed with status ${response.status}`;
 }
 
-export async function createCheckout(options: CreateCheckoutOptions): Promise<CheckoutHandle> {
-  const config = requireConfig();
-  if (!options.currency) {
-    throw new SouthpayError("missing_currency", "createCheckout requires a currency");
-  }
+async function createPaymentIntent(
+  config: ResolvedConfig,
+  options: CreateCheckoutOptions,
+  amount: string,
+): Promise<string> {
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onExternalAbort = () => controller.abort();
+  options.signal?.addEventListener("abort", onExternalAbort);
 
-  const amount = toMajorUnits(options.amount);
-  const response = await fetch(`${config.apiBase}/api/v2/payments`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${config.publishableKey}`,
-    },
-    body: JSON.stringify({
-      payment_intent: {
-        amount,
-        currency: options.currency,
-        order_id: options.orderId,
-        title: options.title,
-        description: options.description,
-        image_url: options.imageUrl,
-        success_url: options.successUrl,
-        failed_url: options.failedUrl,
-        metadata: options.metadata,
+  let response: Response;
+  try {
+    response = await fetch(`${config.apiBase}/api/v2/payments`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${config.publishableKey}`,
+        "idempotency-key": newIdempotencyKey(options.idempotencyKey),
+        "x-southpay-client": `southpay-js/${VERSION}`,
       },
-    }),
-  });
+      body: JSON.stringify({
+        payment_intent: {
+          amount,
+          currency: options.currency,
+          order_id: options.orderId,
+          title: options.title,
+          description: options.description,
+          image_url: options.imageUrl,
+          success_url: options.successUrl,
+          failed_url: options.failedUrl,
+          metadata: options.metadata,
+        },
+      }),
+    });
+  } catch (error) {
+    if (options.signal?.aborted) {
+      throw new SouthpayError("network_error", "checkout request was aborted");
+    }
+    if (controller.signal.aborted) {
+      throw new SouthpayError("network_error", `checkout request timed out after ${timeoutMs}ms`);
+    }
+    throw new SouthpayError(
+      "network_error",
+      `checkout request failed: ${(error as Error).message}`,
+    );
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onExternalAbort);
+  }
 
   if (!response.ok) {
     throw new SouthpayError("request_failed", await readErrorMessage(response));
@@ -66,6 +98,16 @@ export async function createCheckout(options: CreateCheckoutOptions): Promise<Ch
   if (!reference) {
     throw new SouthpayError("invalid_response", "payment response did not include a reference");
   }
+  return reference;
+}
+
+export async function createCheckout(options: CreateCheckoutOptions): Promise<CheckoutHandle> {
+  const config = requireConfig();
+  if (!options.currency) {
+    throw new SouthpayError("missing_currency", "createCheckout requires a currency");
+  }
+  const amount = toMajorUnits(options.amount);
+  const reference = await createPaymentIntent(config, options, amount);
 
   return mount({
     reference,

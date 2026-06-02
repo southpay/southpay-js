@@ -3,6 +3,7 @@ import type { SouthpayConfig } from "./types";
 
 export { createCheckout, mount } from "./checkout";
 export { SouthpayError, type SouthpayErrorCode } from "./errors";
+export { VERSION } from "./version";
 export type {
   SouthpayConfig,
   CheckoutCallbacks,

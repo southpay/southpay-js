@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@southpay/js - vanilla example</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 520px;
+        margin: 48px auto;
+        padding: 0 16px;
+      }
+      input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 12px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid #0f172a;
+        background: #0f172a;
+        color: #fff;
+        cursor: pointer;
+      }
+      #checkout {
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>@southpay/js</h1>
+    <p>Run <code>npm run build</code> first, then open this file.</p>
+
+    <label for="key">Publishable key</label>
+    <input id="key" placeholder="sp_pk_test_..." />
+
+    <label for="api">API base (optional)</label>
+    <input id="api" placeholder="https://api.southpay.io" />
+
+    <button id="inline">Inline checkout</button>
+    <button id="modal">Modal checkout</button>
+
+    <div id="checkout"></div>
+
+    <script src="../../dist/index.global.js"></script>
+    <script>
+      function start(container) {
+        var key = document.getElementById("key").value.trim();
+        if (!key) {
+          alert("Enter a publishable key");
+          return;
+        }
+        var api = document.getElementById("api").value.trim();
+        SouthPay.init({ publishableKey: key, apiBase: api || undefined });
+        SouthPay.createCheckout({
+          amount: 1000,
+          currency: "EUR",
+          container: container,
+          onCompleted: function (event) {
+            console.log("completed", event);
+          },
+        }).catch(function (error) {
+          console.error(error);
+        });
+      }
+
+      document.getElementById("inline").addEventListener("click", function () {
+        start("#checkout");
+      });
+      document.getElementById("modal").addEventListener("click", function () {
+        start(undefined);
+      });
+    </script>
+  </body>
+</html>

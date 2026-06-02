@@ -38,6 +38,28 @@ describe("createCheckout", () => {
     expect(body.payment_intent.currency).toBe("EUR");
   });
 
+  it("sends an idempotency key and client header", async () => {
+    const fetchMock = mockFetch({ body: { reference: "ref_1" } });
+    await createCheckout({ amount: 100, currency: "EUR", container: document.body });
+
+    const headers = (fetchMock.mock.calls[0]?.[1]?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toBeTruthy();
+    expect(headers["x-southpay-client"]).toMatch(/^southpay-js\//);
+  });
+
+  it("uses a caller-provided idempotency key", async () => {
+    const fetchMock = mockFetch({ body: { reference: "ref_1" } });
+    await createCheckout({
+      amount: 100,
+      currency: "EUR",
+      container: document.body,
+      idempotencyKey: "fixed-key",
+    });
+
+    const headers = (fetchMock.mock.calls[0]?.[1]?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toBe("fixed-key");
+  });
+
   it("rejects a non-integer amount", async () => {
     mockFetch({ body: { reference: "ref_1" } });
     await expect(

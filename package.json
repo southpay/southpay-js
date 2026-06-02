@@ -37,6 +37,7 @@
     "test:watch": "vitest",
     "lint": "biome check .",
     "format": "biome format --write .",
+    "size": "size-limit",
     "prepublishOnly": "npm run build"
   },
   "engines": {
@@ -47,7 +48,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@size-limit/file": "^11.1.6",
     "happy-dom": "^15.11.2",
+    "size-limit": "^11.1.6",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

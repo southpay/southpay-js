@@ -67,6 +67,8 @@ mount({
 
 `amount`, `currency`, optional `orderId`, `title`, `description`, `imageUrl`, `successUrl`, `failedUrl`, `metadata`, `container`, `minHeight`, and the callbacks below.
 
+The create request is idempotent. A key is generated per call, or pass your own `idempotencyKey` to make retries safe. It times out after 20s (`timeoutMs`) and accepts an `AbortSignal` via `signal`.
+
 ### `mount(options): CheckoutHandle`
 
 `reference`, optional `container`, `minHeight`, and the callbacks below.
@@ -86,7 +88,20 @@ mount({
 
 ### Errors
 
-`createCheckout`, `mount`, and `init` throw `SouthpayError` with a `code` (`not_initialized`, `invalid_publishable_key`, `invalid_amount`, `missing_currency`, `missing_reference`, `container_not_found`, `request_failed`, `invalid_response`).
+`createCheckout`, `mount`, and `init` throw `SouthpayError` with a `code` (`not_initialized`, `invalid_publishable_key`, `invalid_amount`, `missing_currency`, `missing_reference`, `container_not_found`, `network_error`, `request_failed`, `invalid_response`).
+
+### `VERSION`
+
+The package version, also sent as `x-southpay-client` on the create request.
+
+## Examples
+
+- `examples/html` is a plain script-tag integration.
+- `examples/react` is a React app that consumes the package.
+
+## Security
+
+Only publishable keys reach the browser; the SDK rejects anything else. See [SECURITY.md](./SECURITY.md).
 
 ## Development
 

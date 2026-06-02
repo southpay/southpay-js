@@ -1,0 +1,14 @@
+[
+  {
+    "name": "esm (gzip)",
+    "path": "dist/index.js",
+    "limit": "3 kB",
+    "gzip": true
+  },
+  {
+    "name": "global script (gzip)",
+    "path": "dist/index.global.js",
+    "limit": "3 kB",
+    "gzip": true
+  }
+]

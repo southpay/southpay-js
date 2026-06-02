@@ -48,6 +48,12 @@ export interface CreateCheckoutOptions extends CheckoutCallbacks {
   successUrl?: string;
   failedUrl?: string;
   metadata?: Record<string, unknown>;
+  /** Idempotency key for the create request. Auto-generated when omitted. */
+  idempotencyKey?: string;
+  /** Abort the create request from your own controller. */
+  signal?: AbortSignal;
+  /** Create-request timeout in milliseconds. Defaults to 20000. */
+  timeoutMs?: number;
   /** Element or CSS selector to mount into. Omit to open a modal overlay. */
   container?: string | HTMLElement;
   /** Minimum iframe height in pixels. Defaults to 560. */

@@ -5,6 +5,7 @@ export type SouthpayErrorCode =
   | "missing_currency"
   | "missing_reference"
   | "container_not_found"
+  | "network_error"
   | "request_failed"
   | "invalid_response";
 

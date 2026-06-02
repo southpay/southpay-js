@@ -1,0 +1,55 @@
+{
+  "name": "@southpay/js",
+  "version": "0.1.0",
+  "description": "Browser SDK for SouthPay crypto checkouts",
+  "type": "module",
+  "license": "MIT",
+  "author": "SouthPay",
+  "homepage": "https://github.com/southpay/southpay-js#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/southpay/southpay-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/southpay/southpay-js/issues"
+  },
+  "keywords": ["southpay", "crypto", "payments", "checkout", "sdk"],
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/index.global.js",
+  "jsdelivr": "./dist/index.global.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "happy-dom": "^15.11.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

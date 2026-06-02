@@ -52,10 +52,7 @@ export function normalizeAmount(amount: string, currency: string): string {
   const intPart = rawInt.replace(/^0+(?=\d)/, "");
 
   if (intPart === "0" && /^0*$/.test(rawFrac)) {
-    throw new SouthpayError(
-      "invalid_amount",
-      "amount must be greater than zero",
-    );
+    throw new SouthpayError("invalid_amount", "amount must be greater than zero");
   }
 
   if (exponent === 0) return intPart;

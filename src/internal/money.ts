@@ -41,6 +41,7 @@ export function normalizeAmount(amount: string, currency: string): string {
   const dot = amount.indexOf(".");
   const rawInt = dot === -1 ? amount : amount.slice(0, dot);
   const rawFrac = dot === -1 ? "" : amount.slice(dot + 1);
+
   if (rawFrac.length > exponent) {
     throw new SouthpayError(
       "invalid_amount",
@@ -49,8 +50,12 @@ export function normalizeAmount(amount: string, currency: string): string {
   }
 
   const intPart = rawInt.replace(/^0+(?=\d)/, "");
+
   if (intPart === "0" && /^0*$/.test(rawFrac)) {
-    throw new SouthpayError("invalid_amount", "amount must be greater than zero");
+    throw new SouthpayError(
+      "invalid_amount",
+      "amount must be greater than zero",
+    );
   }
 
   if (exponent === 0) return intPart;

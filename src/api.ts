@@ -8,13 +8,20 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 function newIdempotencyKey(provided?: string): string {
   if (provided) return provided;
   const uuid = globalThis.crypto?.randomUUID?.();
-  return uuid ?? `idem_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  return (
+    uuid ??
+    `idem_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+  );
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { error?: { message?: string } | string };
+    const body = (await response.json()) as {
+      error?: { message?: string } | string;
+    };
+
     if (typeof body.error === "string") return body.error;
+
     if (body.error?.message) return body.error.message;
   } catch {
     return `request failed with status ${response.status}`;
@@ -61,12 +68,18 @@ export async function createPaymentIntent(
     });
   } catch (error) {
     if (options.signal?.aborted) {
-      throw new SouthpayError("network_error", "checkout request was aborted", { cause: error });
-    }
-    if (controller.signal.aborted) {
-      throw new SouthpayError("timeout", `checkout request timed out after ${timeoutMs}ms`, {
+      throw new SouthpayError("network_error", "checkout request was aborted", {
         cause: error,
       });
+    }
+    if (controller.signal.aborted) {
+      throw new SouthpayError(
+        "timeout",
+        `checkout request timed out after ${timeoutMs}ms`,
+        {
+          cause: error,
+        },
+      );
     }
     throw new SouthpayError(
       "network_error",
@@ -84,10 +97,16 @@ export async function createPaymentIntent(
     throw new SouthpayError("request_failed", await readErrorMessage(response));
   }
 
-  const payload = (await response.json()) as { reference?: string; data?: { reference?: string } };
+  const payload = (await response.json()) as {
+    reference?: string;
+    data?: { reference?: string };
+  };
   const reference = payload.reference ?? payload.data?.reference;
   if (!reference) {
-    throw new SouthpayError("invalid_response", "payment response did not include a reference");
+    throw new SouthpayError(
+      "invalid_response",
+      "payment response did not include a reference",
+    );
   }
   return reference;
 }

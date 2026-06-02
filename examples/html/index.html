@@ -55,10 +55,27 @@
 
     <div id="checkout"></div>
 
+    <p style="margin-top:24px;font-size:13px;color:#94a3b8;">
+      The status below is driven by the checkout callbacks:
+      <code>onStatusChange</code>, <code>onCompleted</code>, <code>onFailed</code>,
+      <code>onExpired</code>.
+    </p>
+    <div
+      id="status"
+      style="margin-top:8px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;color:#64748b;display:none;"
+    ></div>
+
     <script src="../../dist/index.global.js"></script>
     <script>
       function value(id) {
         return document.getElementById(id).value.trim() || undefined;
+      }
+
+      function setStatus(text, color) {
+        var el = document.getElementById("status");
+        el.style.display = "block";
+        el.style.color = color || "#64748b";
+        el.textContent = text;
       }
 
       function start(container) {
@@ -71,18 +88,50 @@
           apiBase: value("api"),
           checkoutOrigin: value("origin"),
         });
+        setStatus("Creating checkout...");
+        var apiBase = value("api") || "https://api.southpay.io";
         southpay.paymentIntents
           .create({ amount: "10.00", currency: "EUR" })
           .then(function (intent) {
+            setStatus("Checkout created: " + intent.reference);
+
+            window.checkoutStatus = function () {
+              return fetch(apiBase + "/api/v2/checkout/" + intent.reference)
+                .then(function (r) {
+                  return r.json();
+                })
+                .then(function (data) {
+                  console.log("[southpay] status:", data.status);
+                  return data;
+                });
+            };
+            console.log(
+              "[southpay] reference:",
+              intent.reference,
+              "- call checkoutStatus() to read it",
+            );
+
             southpay.checkout.mount({
               reference: intent.reference,
               container: container,
+              onStatusChange: function (event) {
+                console.log("[southpay] status:", event.status);
+                setStatus("Status: " + event.status);
+              },
               onCompleted: function (event) {
+                setStatus("Payment successful. Reference " + event.reference, "#16a34a");
                 console.log("completed", event);
+              },
+              onFailed: function (event) {
+                setStatus("Payment failed (" + event.status + ")", "#dc2626");
+              },
+              onExpired: function () {
+                setStatus("Checkout expired", "#dc2626");
               },
             });
           })
           .catch(function (error) {
+            setStatus(error.message || "Something went wrong", "#dc2626");
             console.error(error);
           });
       }

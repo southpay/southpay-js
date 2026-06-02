@@ -43,6 +43,7 @@ export async function createPaymentIntent(
         authorization: `Bearer ${config.publishableKey}`,
         "idempotency-key": newIdempotencyKey(options.idempotencyKey),
         "x-southpay-client": `southpay-js/${VERSION}`,
+        "x-client-version": VERSION,
       },
       body: JSON.stringify({
         payment_intent: {

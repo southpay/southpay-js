@@ -68,6 +68,7 @@ describe("outbound create-intent protocol (SDK -> API)", () => {
     expect(headers["content-type"]).toBe("application/json");
     expect(headers["idempotency-key"]).toBeTruthy();
     expect(headers["x-southpay-client"]).toMatch(/^southpay-js\//);
+    expect(headers["x-client-version"]).toMatch(/^\d+\.\d+\.\d+/);
 
     expect(JSON.parse(request.body as string)).toEqual({
       payment_intent: {
